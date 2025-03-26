@@ -79,10 +79,14 @@ namespace desktop_updater
         "timeout /t 2 /nobreak > NUL\n"
         
         "echo Updating application files...\n"
-        // Use robocopy instead of xcopy for better copy performance and reliability
-        "robocopy \"" + updateDirStr + "\" \"" + destDirStr + "\" /E /IS /IT /IM /NFL /NDL /NJH /NJS\n"
+        // First, copy all files from update directory to current directory
+        "xcopy /Y /E /I \"" + updateDirStr + "\\*\" \"" + destDirStr + "\"\n"
+        "if errorlevel 1 (\n"
+        "    echo Failed to copy files\n"
+        "    exit /b 1\n"
+        ")\n"
         
-        // Clean up update directory
+        // Clean up update directory after successful copy
         "rmdir /S /Q \"" + updateDirStr + "\"\n"
         
         // Clean up bat file
@@ -135,14 +139,17 @@ namespace desktop_updater
 
     printf("Executable path: %ls\n", executable_path);
 
-    // Replace the existing copyDirectory lambda with copyAndReplaceFiles function
+    // Get current directory as destination
+    wchar_t current_dir[MAX_PATH];
+    GetCurrentDirectoryW(MAX_PATH, current_dir);
+    
     std::wstring updateDir = L"update";
-    std::wstring destDir = L".";
+    std::wstring destDir = current_dir;
 
     // Update createBatFile call with parameters
     createBatFile(updateDir, destDir, executable_path);
 
-    // 3. .bat dosyasını çalıştır
+    // Run the bat file
     runBatFile();
 
     // Exit the current process
