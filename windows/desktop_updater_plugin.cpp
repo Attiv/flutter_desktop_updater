@@ -66,24 +66,28 @@ namespace desktop_updater
     WideCharToMultiByte(CP_UTF8, 0, executable_path, -1, &exePathStr[0], exePathSize, NULL, NULL);
     exePathStr.pop_back(); // Remove null terminator
 
+    // Extract executable name from path
+    std::string exeName = exePathStr.substr(exePathStr.find_last_of("\\") + 1);
+
     const std::string batScript =
         "@echo off\n"
-        // "echo Updating the application...\n"
+        "echo Waiting for application to close...\n"
         "timeout /t 2 /nobreak > NUL\n"
-        // "echo Copying files...\n"
-        "xcopy /E /I /Y \"" +
-        updateDirStr + "\\*\" \"" + destDirStr + "\\\"\n"
-                                                 "rmdir /S /Q \"" +
-        updateDirStr + "\"\n" +
-        // "echo Files copied.\n"
+        
+        // Kill any remaining instances of the application
+        "taskkill /F /IM \"" + exeName + "\" /T > NUL 2>&1\n"
+        "timeout /t 2 /nobreak > NUL\n"
+        
+        "echo Updating application files...\n"
+        // Use robocopy instead of xcopy for better copy performance and reliability
+        "robocopy \"" + updateDirStr + "\" \"" + destDirStr + "\" /E /IS /IT /IM /NFL /NDL /NJH /NJS\n"
+        
+        // Clean up update directory
+        "rmdir /S /Q \"" + updateDirStr + "\"\n"
+        
+        // Clean up bat file
         "timeout /t 1 /nobreak > NUL\n"
-        "start \"\" \"" +
-        exePathStr + "\"\n"
-                     "timeout /t 1 /nobreak > NUL\n"
-                     // "echo Deleting temporary files...\n"
-                     "del update_script.bat\n"
-                     "\"\n"
-                     "exit\n";
+        "(goto) 2>nul & del \"%~f0\"\n";
 
     std::ofstream batFile("update_script.bat");
     batFile << batScript;
