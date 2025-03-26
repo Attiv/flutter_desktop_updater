@@ -6,9 +6,9 @@ import "package:desktop_updater/src/file_hash.dart";
 import "package:http/http.dart" as http;
 import "package:path/path.dart" as path;
 
-Future<ItemModel?> versionCheckFunction({
-  required String appArchiveUrl,
-}) async {
+import "app_archive.dart";
+
+Future<ItemModel?> versionCheckFunction({required String appArchiveUrl}) async {
   final executablePath = Platform.resolvedExecutable;
 
   final directoryPath = executablePath.substring(
@@ -37,8 +37,9 @@ Future<ItemModel?> versionCheckFunction({
 
     // temp dizinindeki dosyaları kopyala
     // dir + output.txt dosyası oluşturulur
-    final outputFile =
-        File("${tempDir.path}${Platform.pathSeparator}app-archive.json");
+    final outputFile = File(
+      "${tempDir.path}${Platform.pathSeparator}app-archive.json",
+    );
 
     // Çıktı dosyasını açıyoruz
     final sink = outputFile.openWrite();
@@ -62,25 +63,22 @@ Future<ItemModel?> versionCheckFunction({
       jsonDecode(appArchiveString),
     );
 
-    final versions = appArchiveDecoded.items
-        .where(
-          (element) => element.platform == Platform.operatingSystem,
-        )
-        .toList();
+    final versions =
+        appArchiveDecoded.items
+            .where((element) => element.platform == Platform.operatingSystem)
+            .toList();
 
     if (versions.isEmpty) {
       throw Exception("Desktop Updater: No version found for this platform");
     }
 
     // Get the latest version with shortVersion number
-    final latestVersion = versions.reduce(
-      (value, element) {
-        if (value.shortVersion > element.shortVersion) {
-          return value;
-        }
-        return element;
-      },
-    );
+    final latestVersion = versions.reduce((value, element) {
+      if (value.shortVersion > element.shortVersion) {
+        return value;
+      }
+      return element;
+    });
 
     print("Latest version: ${latestVersion.shortVersion}");
 
@@ -96,12 +94,10 @@ Future<ItemModel?> versionCheckFunction({
       print("Current version: ${versionJson['build_number']}");
       currentVersion = versionJson["build_number"];
     } else {
-      await DesktopUpdater().getCurrentVersion().then(
-        (value) {
-          print("Current version: $value");
-          currentVersion = value;
-        },
-      );
+      await DesktopUpdater().getCurrentVersion().then((value) {
+        print("Current version: $value");
+        currentVersion = value;
+      });
     }
 
     if (currentVersion == null) {
@@ -127,23 +123,26 @@ Future<ItemModel?> versionCheckFunction({
         throw const HttpException("Failed to download hashes.json");
       }
 
-      final outputFile =
-          File("${tempDir.path}${Platform.pathSeparator}hashes.json");
+      final outputFile = File(
+        "${tempDir.path}${Platform.pathSeparator}hashes.json",
+      );
       final sink = outputFile.openWrite();
 
-      await newHashFileResponse.stream.listen(
-        sink.add,
-        onDone: () async {
-          await sink.close();
-          client.close();
-        },
-        onError: (e) async {
-          await sink.close();
-          client.close();
-          throw e;
-        },
-        cancelOnError: true,
-      ).asFuture();
+      await newHashFileResponse.stream
+          .listen(
+            sink.add,
+            onDone: () async {
+              await sink.close();
+              client.close();
+            },
+            onError: (e) async {
+              await sink.close();
+              client.close();
+              throw e;
+            },
+            cancelOnError: true,
+          )
+          .asFuture();
 
       final oldHashFilePath = await genFileHashes();
       final newHashFilePath = outputFile.path;

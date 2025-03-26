@@ -8,8 +8,8 @@ class AppArchiveModel {
 
   factory AppArchiveModel.fromJson(Map<String, dynamic> json) {
     return AppArchiveModel(
-      appName: json["appName"],
-      description: json["description"],
+      appName: json["appName"] ?? "",
+      description: json["description"] ?? "",
       items: List<ItemModel>.from(
         json["items"].map((x) => ItemModel.fromJson(x)),
       ),
